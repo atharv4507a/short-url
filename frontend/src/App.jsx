@@ -1,4 +1,4 @@
-import Urlpage from './pages/Urlpage';
+import Urlpage from './pages/urlpage';
 import './App.css';
 
 function App() {
