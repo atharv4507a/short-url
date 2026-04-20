@@ -8,6 +8,8 @@ const UrlShortener = () => {
     const [urls, setUrls] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
+
     useEffect(() => {
         fetchUrls();
     }, []);
@@ -15,14 +17,25 @@ const UrlShortener = () => {
     const fetchUrls = async () => {
         try {
             const res = await Api.get("/url/all");
-            setUrls(res.data);
+
+            console.log("API Response:", res.data);
+
+            // FIX: ensure array
+            const urlData = Array.isArray(res.data)
+                ? res.data
+                : res.data.data || [];
+
+            setUrls(urlData);
+
         } catch (error) {
             console.log("Error fetching urls:", error);
+            setUrls([]);
         }
     };
 
     const deleteHandler = async (id) => {
         if (!window.confirm("Are you sure?")) return;
+
         try {
             await Api.delete(`/url/delete/${id}`);
             fetchUrls();
@@ -45,9 +58,12 @@ const UrlShortener = () => {
         setLoading(true);
         try {
             const res = await Api.post("/url/create", formData);
-            setShortUrl("http://localhost:3000/url/" + res.data.shortId);
+
+            setShortUrl(`${BASE_URL}/url/${res.data.shortId}`);
+
             setFormData({ originalUrl: '' });
             fetchUrls();
+
         } catch (error) {
             console.log(error);
         } finally {
@@ -57,29 +73,6 @@ const UrlShortener = () => {
 
     return (
         <div className="main-layout">
-            {/* Background Particles */}
-            <div className="particles-container">
-                {[...Array(35)].map((_, i) => {
-                    const colors = ['#22d3ee', '#c084fc', '#f472b6', '#4ade80', '#fbbf24'];
-                    const tags = ['HTTP', 'HTTPS', 'WWW', 'URL', '/', '://', '.COM', '#', 'LINK', 'GET'];
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    const tag = tags[Math.floor(Math.random() * tags.length)];
-                    return (
-                        <div key={i} className="particle" style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            animationDelay: `${Math.random() * 8}s`,
-                            fontSize: `${Math.random() * 12 + 10}px`,
-                            color: color,
-                            textShadow: `0 0 10px ${color}88`,
-                            fontWeight: 'bold',
-                            opacity: Math.random() * 0.4 + 0.1,
-                        }}>
-                            {tag}
-                        </div>
-                    );
-                })}
-            </div>
 
             {/* Navbar */}
             <nav className="navbar">
@@ -91,97 +84,82 @@ const UrlShortener = () => {
 
             {/* Hero Section */}
             <section className="hero-section">
-                <div className="badge">Free URL Shortener with Analytics</div>
-                
                 <h1 className="hero-title">
                     Shorten URLs.
-                    <span>Track Every Click.</span>
+                    <span> Track Every Click.</span>
                 </h1>
-                
-                <p className="hero-subtitle">
-                    Transform long, messy URLs into clean, branded short links. Track clicks, 
-                    measure performance, and share confidently anywhere.
-                </p>
 
                 <form onSubmit={submitHandler} className="pill-form-container">
-                    <div className="input-wrapper">
-                        <span className="input-icon">🔗</span>
-                        <input
-                            type="url"
-                            className="pill-input"
-                            placeholder="Paste your long URL to shorten..."
-                            name="originalUrl"
-                            value={formData.originalUrl}
-                            onChange={inputHandler}
-                            required
-                        />
-                    </div>
+                    <input
+                        type="url"
+                        className="pill-input"
+                        placeholder="Paste your long URL..."
+                        name="originalUrl"
+                        value={formData.originalUrl}
+                        onChange={inputHandler}
+                        required
+                    />
+
                     <button type="submit" className="btn-shorten" disabled={loading}>
-                        {loading ? '...' : (
-                            <>
-                                Shorten URL <span style={{fontSize: '1.2rem'}}>→</span>
-                            </>
-                        )}
+                        {loading ? 'Loading...' : 'Shorten'}
                     </button>
                 </form>
 
-                <ul className="features-list">
-                    <li className="feature-item"><span className="check-icon">✓</span> Free forever</li>
-                    <li className="feature-item"><span className="check-icon">✓</span> Full click analytics</li>
-                    <li className="feature-item"><span className="check-icon">✓</span> Custom short links</li>
-                </ul>
-
                 {shortUrl && (
                     <div className="success-msg">
-                        <div style={{fontWeight: 600, marginBottom: '0.5rem'}}>Success! Your short link:</div>
-                        <a href={shortUrl} target="_blank" rel="noreferrer" className="short-link" style={{fontSize: '1.2rem'}}>
+                        <p>Short URL:</p>
+                        <a href={shortUrl} target="_blank" rel="noreferrer">
                             {shortUrl}
                         </a>
                     </div>
                 )}
             </section>
 
-            {/* History Table */}
+            {/* Table */}
             <section className="history-section">
-                <h2 className="history-title">Recent Activity</h2>
-                <div style={{overflowX: 'auto'}}>
-                    <table className="url-table">
-                        <thead>
-                            <tr>
-                                <th>Original URL</th>
-                                <th>Short Link</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {urls.length > 0 ? urls.map((url) => (
+                <h2>Recent URLs</h2>
+
+                <table className="url-table">
+                    <thead>
+                        <tr>
+                            <th>Original URL</th>
+                            <th>Short Link</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {Array.isArray(urls) && urls.length > 0 ? (
+                            urls.map((url) => (
                                 <tr key={url._id}>
+                                    <td>{url.originalUrl}</td>
+
                                     <td>
-                                        <div className="original-url" title={url.originalUrl}>
-                                            {url.originalUrl}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <a href={`http://localhost:3000/url/${url.shortId}`} target="_blank" rel="noreferrer" className="short-link">
+                                        <a
+                                            href={`${BASE_URL}/url/${url.shortId}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
                                             {url.shortId}
                                         </a>
                                     </td>
+
                                     <td>
-                                        <button className="btn-delete-small" onClick={() => deleteHandler(url._id)}>
+                                        <button
+                                            onClick={() => deleteHandler(url._id)}
+                                        >
                                             Delete
                                         </button>
                                     </td>
                                 </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="3" style={{textAlign: 'center', color: '#64748b'}}>
-                                        No links shortened yet.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="3">No URLs found</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </section>
         </div>
     );
